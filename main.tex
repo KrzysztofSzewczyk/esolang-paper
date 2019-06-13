@@ -1,0 +1,260 @@
+
+
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage[a4paper, total={6in, 8in}]{geometry}
+\usepackage{longtable}
+
+\usepackage{pgfplots}
+\usepackage{tikz}
+\usepackage{tikz}
+\usetikzlibrary{patterns}
+
+\setlength{\parskip}{1em}
+
+\title{Use of esoteric languages in modern computing}
+\date{2019}
+\author{Kamila "Palaiologos" Szewczyk}
+
+\begin{document}
+
+\maketitle
+
+\section{Preface}
+\par Esoteric languages were the unexplored topic of programming and computer science. Taken semi-seriously, albeit worthiness in information technology. Esoteric languages in most cases have very simple syntax and limited syntactic operations. Let's compare them to x86 Assembly language.
+
+\par Every person that has ever reverse-engineered an application will agree, that reverse engineering C\# or Java application is relatively simple task compared to understanding compiler-generated or optimized by hand (even worse) code with disassembler being in some cases all you can use.
+
+\par Esoteric languages world is pretty tight with limited availability of disassemblers or debuggers, while being pretty complicated themselves. Without a program that would decompile a sequence of just meaningless pluses and minuses it's painfully hard to modify or understand the code. For example, Brainfuck is a very low-level tool and creating a generic assembler doesn't use all language possibilities outputting a tiny bit inefficient code. Because of this fact, creation of generic Brainfuck disassembler is plain not possible. The only tool that would help is a debugger or optimizing source-to-source compiler, allowing to view the source code in more familiar and more optimized variant utilizing more target language features (because Brainfuck overall is using very small subset of capabilities that modern processors offer).
+
+\par It's perfectly normal that programming languages that are a bit less practical (e.g. Assembly) are plain hard to program. Albeit a simple language ("just" a few 8086 instructions and everything added by 1xx, 2xx, 3xx and 4xx 86 family members summed up together with countless instruction families from SIMD featuring at least eight instructions each, giving a rough estimate of more than a thousand of instructions, if not more, to memorize, with a 4500 total pages of Intel x86 manual compared to 1000 pages of very dissolute ECMAScript standard), while programming in low-level languages that serve small amount of possible constructs, it's required to create it's equivalents using possible instructions creating code that may hard to read (if written poorly) and hard to program correctly.
+
+\par If applications in esoteric languages are mostly hard to read and hard to write, and due to extremely reduced feature set, thus inefficient, why would we use them in modern programming?
+
+\section{Securing the code}
+\par Obfuscation is pretty fragile topic. In most cases it's not a protection, but a tool to make reverse-engineering a bit harder, yet a motivated cracker will understand how the code works, and patch it to his/her needs. Esoteric languages often make the challenges really hard to complete. Let's take a look at this brainfuck code. The goal of this challenge is typing seven characters into the program, that will result a `0` (ASCII; 48d 30h) \footnote{One of possible solutions: ASCII values: 0 0 2 1 9 244 5}. The code for challenge looks like this:
+
+\begin{verbatim}
++>+[<[>>+>+<<<-]>>[<<+>>-]>[[-]>>,>,>,>,<<<[<<+>>-]<<[>>>[<+<+>>-]<<[>>+<<-]<-]>>
+>>[<<+<+>>>-]<<<[>>>+<<<-]>>>>[<<<-<+>>>>-]<<<<[>>>>+<<<<-]>>>>>++++++++++<<<<[<<
++>>-]<<[>>>>>>[<<<<+<+>>>>>-]<<<<<[>>>>>+<<<<<-]<-]>>>>>>[-]<<<,>,>,<<[<-<+>>-]<<
+[>>+<<-]>[<<+>>-]<<[>>>>[<<+<+>>>-]<<<[>>>+<<<-]<-]>>[<<<+>>>-]<<<[>>>>>>[<<<<<+>
++>>>>-]<<<<[>>>>+<<<<-]<[>+<<-[>>[-]>>>>>>+<<<<<<<<-]>>>>>>>>[<<<<<<<<+>>>>>>>>-]
+<<<<<<[<-[>>-<<[-]]+>-]<-]>>+<<<]>>>.<<]<<<[>>+>+<<<-]>>[<<+>>-]>[[-]<<<[-]>[-]>>
+]<<]
+\end{verbatim}
+
+\par It isn't as straightforward as many programmers would see it. Solving it is left as an exercise for reader, and one of possible solutions is left in footnote. The code is in fact simple and every programmer would solve it in at most two hours. The flaw is brute-force nonresistance - I've left brute-forcing C program for around half a minute and was presented with long list of possible solutions. But the deal is - code isn't going to be fast, so brute-forcing is going to be inefficient; code is going to be way longer (up to two megabytes when using Izmit 3-4), and probably won't be as simple as a division, addition, two multiplications, and subtractions. Using debugger wouldn't help much too, because in reality the program would use thousands of memory cells and analyzing the code would take ages, efficiently freaking out potential crackers and having them to ask themselves question, is cracking this worth the effort to first {\bf understand} what the code is doing, {\bf and extend it}.
+
+\par Application seems here to be obvious - hiding something. But in some cases, this technique will fail completely (if license check will rely on this code, it will in most cases be replaced with a single \verb|return true;| statement without even needing to peek at the code), yet there are plenty of places where this will definitely do a good job (for example, cryptography - it's going to be painfully hard to "guess" the algorithm, and after a few DCI \footnote{Dead code injection} and simplification passes it will be practically impossible).
+
+\par One additional difficulty might come during development - If cracker {\it isn't} meant to know the algorithm, it needs to be heavily protected, and this can't be done efficiently by human. The deal here is choice of correct language and correct tool.
+
+\par Another advantage of esoteric languages is their simplicity, allowing to build cheap, efficent and minimally power-hungry CPUs, potentially allowing to do better job in simpler embedded development and building a cheap scalable service.
+
+\section{Brainfuck}
+\par Brainfuck is known among programmers since XX decade. I'm going to start off with this language because it's paradoxically simplest of all of these. Brainfuck has the highest amount of tools available to simplify programming process - many assemblers, compilers - but many debuggers too. Brainfuck overall is the least hellishly-complicated languages I'll take on my bench in this paper. It's dead simple implementation of abstract Turing automata (more specifically, it's better to call it Turing tarpit\footnote{"Epigrams of Programming" by A. Perlis have given such definition - {Beware of the Turing tar-pit in which everything is possible but nothing of interest is easy.}}), allowing basic input and output, single loop type (in higher-level programming we would map them directly to \verb|while(...)| loops), incrementation and decrementation (not even complete addition and subtraction; only addition OR subtraction would be sufficient\footnote{Such machine will be mentioned in SUBLEQ/ADDLEQ part}) and tape pointer manipulation.
+
+\subsection{asm2bf / bfasm}
+\par asm2bf\footnote{https://github.com/kspalaiologos/asmbf} and bfasm was my first attempt at real to-brainfuck compiler giving access to the most important features and some additional time-saving features. Consisting of a reduced instruction set featuring four\footnote{Experimental version features five} registers it's capable of creating even advanced applications.
+
+\subsubsection{Register model}
+\par There are four general purpose registers: r1, r2, r3, and r4. Size of these registers depends on
+interpreter or compiler being used, but they are at least 16-bits wide. There are no flags and no
+instruction pointer. The assembler is case sensitive, so the registers should always be written with
+a lowercase "r".
+
+\subsubsection{Memory}
+\par bfasm allows for a stack (of definable size) and memory. Memory can be accessed indirectly for pointer use. Stack is separated from memory, so it's impossible to set stack contents using memory peek and poke operations.
+
+\subsubsection{Comments}
+\par Comments begin with the ";" character. They can be placed either at beginning of a line or after an instruction. Comments continue until the end of the line. They are not taken at all during the compilation process. Because no code is optimized as asm2bf doesn't feature an optimizer, comments are saving some trouble while understanding hand-optimized assembly code with tons of brainfuck in-between.
+
+\subsubsection{Instruction operands}
+\par Operands include the registers, immediate values, characters, and strings in the following combinations when separated by commas\footnote{Note: opcode combinations are separated by comma, character constant is literally the same as numeric constant, but character constants may improve readability and speed of code while a tiny bit hurting code size, because there are other ways to get specified constant to memory cell, using addition and multiplication, decrementing/incrementing register when required}.
+
+\begin{table}[h]
+\centering
+\caption{Instruction opcode types}
+\label{tab:instropcode}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Type} & \textbf{Illustrational usage} & \textbf{Example} \\ \hline
+string & "string" & "Hello, world!" \\ \hline
+register & rX & r3 \\ \hline
+immediate & [0 .. 9] & 476 \\ \hline
+character & .character & .X \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Instruction opcode combinations}
+\label{tab:instropcom}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Type} & \textbf{Example} \\ \hline
+string & "Hello, world!" \\ \hline
+register & r3 \\ \hline
+immediate & 476 \\ \hline
+character & .X \\ \hline
+register + register & r2, r3 \\ \hline
+register + immediate & r2, 4 \\ \hline
+register + character & r2, .X \\ \hline
+\end{tabular}
+\end{table}
+
+\par Strings are only used with the \verb|txt| instruction. There are no escape sequences, use \verb|db_| when needed. Characters are converted to the appropriate ASCII immediate value. Immediate values can be any size (it depends) and are automatically substituted as if a register value. Therefore, immediate values can be used in place of a register. There can only be one immediate value per instruction. Operands are evaluated separately from instructions, so it is possible to use the wrong number of operands for an instruction with no error reported. However, doing this will most likely lead to a crash when the assembled program is ran.
+
+\subsubsection{asm2bf ISA}
+\par Instructions are case sensitive and must be given in lowercase letters. The returned values of a boolean operation are \verb|0| (\verb|false|) or \verb|1| (\verb|true|). This applies to \verb|and|, \verb|eq_|, \verb|ge_|, \verb|gt_|, \verb|le_|, \verb|lt_|, \verb|ne_|, \verb|or_|. Only one instruction is allowed per line. Note that \verb|lbl| (label) is treated an instruction
+
+\newgeometry{a4paper, total={9in, 12in}}
+
+\begin{table}[h]
+\centering
+\caption{Instructions}
+\label{tab:instrs}
+\begin{longtable}{lll}
+\textbf{Instruction} & \textbf{Description} & \textbf{Operation} \\ \hline
+\verb|add regA, regB| & Add & \verb|regA = regA + regB|      \\
+\verb|add reg, immed| & Add & \verb|reg = reg + immed|      \\
+\verb|and regA, regB| & AND gate & \verb|regA = regA & regB|     \\
+\verb|clr reg| & Clear & \verb|reg = 0|     \\
+\verb|db_ immed| & Put constant in memory  & Write immediate at next memory cell (see origin)     \\
+\verb|dec reg| & Decrement & \verb|reg = reg - 1|     \\
+\verb|div regA, regB| & Divide  & \verb|regA = regA / regB|    \\
+\verb|div regA, immed| &  Divide & \verb|regA = regA / immed|    \\
+\verb|end| & Exit from program & \verb|jmp 0|     \\
+\verb|eq_ regA, regB| & Equal? & \verb|regA = regA == regB|     \\
+\verb|eq_ regA, immed| & Equal? & \verb|regA = regA == immed|     \\
+\verb|ge_ regA, regB| & Greater/Equal? & \verb|regA = regA >= regB|     \\
+\verb|ge_ regA, immed| & Greater/Equal? & \verb|regA = regA >= immed|     \\
+\verb|gt_ regA, regB| & Greater? & \verb|regA = regA > regB|     \\
+\verb|gt_ regA, immed| & Greater? & \verb|regA = regA > immed|     \\
+\verb|in_ reg| & Read from stdin & \verb|reg = getchar(), EOF = 0|     \\
+\verb|inc reg| & Increment register & \verb|reg = reg + 1|     \\
+\verb|jmp reg| & Jump to label denoted by register & \verb|ip = reg|     \\
+\verb|jmp immed| & Jump to label denoted by immediate & \verb|ip = immed|      \\
+\verb|jnz regA, regB| & Jump if not zero & \verb|jmp to regB if regA != 0|      \\
+\verb|jnz regA, immed| & Jump if not zero & \verb|jmp to immed if regA != 0|      \\
+\verb|jz_ regA, regB| & Jump if zero & \verb|jmp to regB if regA == 0|      \\
+\verb|jz_ regA, immed| & Jump if zero & \verb|jmp to immed if regA == 0|      \\
+\verb|lbl immed| & Label & Define a new linelabel     \\
+\verb|le_ regA, regB| & Less or equal? & \verb|regA = regA <= regB|     \\
+\verb|le_ regA, immed| & Less or equal? & \verb|regA = regA <= immed|     \\
+\verb|lt_ regA, regB| & Less? & \verb|regA = regA < regB|     \\
+\verb|lt_ regA, immed| & Less? & \verb|regA = regA < immed|     \\
+\verb|mod regA, regB| & Broken! & Broken!     \\
+\verb|mod regA, immed| & Broken! & Broken!     \\
+\verb|mov regA, regB| & Move (copy) & \verb|regA = regB|      \\
+\verb|mov regA, immed| & Move (set) & \verb|regA = immed|     \\
+\verb|mul regA, regB| & Multiply & \verb|regA = regA * regB|      \\
+\verb|mul regA, immed| & Multiply & \verb|regA = regA * immed|      \\
+\verb|ne_ regA, regB| & Not equal? & \verb|regA = regA != regB|     \\
+\verb|ne_ regA, immed| & Not equal? & \verb|regA = regA != immed|     \\
+\verb|neg reg| & Negate register & \verb|reg = 0 - reg|     \\
+\verb|not reg| & logical not & \verb|reg = 1 - reg|     \\
+\verb|or_ regA, regB| & Boolean or & \verb|regA = regA or regB|      \\
+\verb|or_ regA, immed| & Boolean or & \verb|regA = regA or immed|     \\
+\verb|org immed| & Set origin & sets memory position of the next \verb|db_| or \verb|txt| output \\
+ & & (default is 0, but needs to be reset after \verb|stk| is used)       \\
+\verb|out reg| & Write to stdout & \verb|stdout = reg|     \\
+\verb|out immed| & Write to stdout & \verb|stdout = immed|     \\
+\verb|pop reg| & Pop from stack & \verb|reg = stack[--sp]|     \\
+\verb|psh reg| & Push to stack & \verb|stack[sp++] = reg|     \\
+\verb|psh immed| & Push to stack & \verb|stack[sp++] = immed|     \\
+\verb|raw char| & Raw code & Write character to output file as brainfuck embed     \\
+\verb|rcl regA, regB| & Peek (memory) & \verb|regA = *regB / mov regA, [regB]|      \\
+\verb|rcl regA, immed| & Peek (memory) & \verb|regA = *immed / mov regA, [immed]|      \\
+\verb|ret| & Return & \verb|jmp stack[--sp]|     \\
+\verb|stk immed| & Set stack size & Set stack size. Default is zero, reset's origin       \\
+ & & so it needs to be adjusted after the operation \\
+\verb|sto regA, regB| & Poke (memory) & \verb|*regA = regB / mov [regA], regB|      \\
+\verb|sto regA, immed| & Poke (memory) & \verb|*regA = regB / mov [regA], immed|      \\
+\verb|sub regA, regB| & Subtract & \verb|regA = regA - regB|      \\
+\verb|sub reg, immed| & Subtract & \verb|reg = reg - immed|      \\
+\verb|swp regA, regB| & Swap & \verb|regA = regB, regB = regA|      \\
+\verb|txt string| & Text & converts string to immediate values and performs \verb|db_|'s      \\
+
+\end{longtable}
+\end{table}
+
+\restoregeometry
+
+\newpage
+
+\subsubsection{Hints}
+\par Labels are numbered from 1. Remember that \textbf{all} instructions have length of 3 and whenever it's needed, floor (\verb|_|) is added at the end. Jump to label 0 will result in quitting application (same as \verb|end|), and redefining label 0 will result in undefined behavior.\footnote{Beware division by zero!} There is no call instruction.  A call can be generated as follows:
+
+\begin{verbatim}
+psh 23          ; value of return label
+jmp 1000        ; label of subroutine
+lbl 23          ; return position
+                ; some code
+
+; [...]
+end             ; end the program to prevent accidental
+                ; fallthru
+
+lbl 1000        ; subroutine
+                ; some code
+
+; [...]
+
+ret             ; return
+\end{verbatim}
+
+\subsubsection{Debugging}
+\par Use bfintd\footnote{No support for experimental version now.}. To place a breakpoint, use:
+
+\begin{verbatim}
+raw .*
+\end{verbatim}
+
+\par The debugger automatically pauses at breakpoints, allowing investigation of stack, memory and registers. \verb|raw| command is inserting brainfuck command into output brainfuck program, increasing universality of the debugger across different minor versions of \verb|asm2bfv1|.
+
+\subsubsection{Advantages and disadvantages}
+\par bfasm is very low-level language simplifying programming in Brainfuck, but doesn't reach the point to allow quick development of applications, because of slight design flaws and limitations. One advantage might be, it's pretty quick and it's not that hard to modify when you lose the source code. The \textit{challenge} code was made using following assembly:
+
+\begin{verbatim}
+
+in_ r1
+in_ r2
+in_ r3
+in_ r4
+mul r1, r2
+add r1, r3
+sub r1, r4
+mul r1, 10
+in_ r2
+in_ r3
+in_ r4
+sub r1, r2
+mul r1, r3
+div r1, r4
+out r1
+
+\end{verbatim}
+
+\par It's worth to note, that the source code consists of fifteen instructions. Eight of them map indirectly to very concise brainfuck code (\verb|in_| is just at most three \verb|<| or \verb|>| and one \verb|,|, due to existence of four possible registers and comma mapping to \verb|in_| trivially, same applies to \verb|out|), leaving four non-trivial operations \footnote{Addition and subtraction can be considered trivial operations, because Brainfuck supports incrementation and decrementation out of the box, so combined with loops it's lending pretty small code, but bfasm has temporary registers to save second register parameter from trashing, requiring use of a copy loop}. Overall, simplicity and good performance is a plus here, but it simply can't serve to protect anything. It's pretty hard to program it so the definition stays with bfasm, making it a turing tarpit.
+
+\par On the other hand, as it's allowing to write small and fast code, it will find use in high performance, low power devices. Quoting Sang-Woo Jun - \textit{"The BrainFuck computer is an attractive solution for servicing high throughput BrainFuck cloud services, both in terms of performance and cost"}. His paper describes the design and implementation of a machine for servicing a large number of BrainFuck execution instances. The design  includes  the  BrainFuck  manycore  processor  and  the  soft-ware daemon that manages the execution instances on the processor. Brainfuck computer can be considered as a uRISC machine. Let's look at comparasion of Brainfuck CPU (uRISC) and x86\footnote{Assumes 1 perfect cycle per 1 instruction} (CISC):
+
+\begin{table}[h]
+\centering
+\caption{Performance and power consumption of Brainfuck and 3GHz processors}
+\label{tab:instropcom}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{General} & \textbf{Brainfuck} \\ \hline
+600X IPS per core & 200X IPS per core \\ \hline
+1150X W / 50bil instructions & 100X W / 50bil instructions \\ \hline
+10X IPS / 16 cores & 50X IPS / 256 cores \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Generic C compiler}
+
+\end{document}
