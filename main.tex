@@ -4,10 +4,10 @@
 \usepackage[utf8]{inputenc}
 \usepackage[english]{babel}
 \usepackage[a4paper, total={6in, 8in}]{geometry}
+\usepackage{multicol}
 \usepackage{longtable}
 
 \usepackage{pgfplots}
-\usepackage{tikz}
 \usepackage{tikz}
 \usetikzlibrary{patterns}
 
@@ -36,6 +36,7 @@
 \par Obfuscation is pretty fragile topic. In most cases it's not a protection, but a tool to make reverse-engineering a bit harder, yet a motivated cracker will understand how the code works, and patch it to his/her needs. Esoteric languages often make the challenges really hard to complete. Let's take a look at this brainfuck code. The goal of this challenge is typing seven characters into the program, that will result a `0` (ASCII; 48d 30h) \footnote{One of possible solutions: ASCII values: 0 0 2 1 9 244 5}. The code for challenge looks like this:
 
 \begin{verbatim}
+
 +>+[<[>>+>+<<<-]>>[<<+>>-]>[[-]>>,>,>,>,<<<[<<+>>-]<<[>>>[<+<+>>-]<<[>>+<<-]<-]>>
 >>[<<+<+>>>-]<<<[>>>+<<<-]>>>>[<<<-<+>>>>-]<<<<[>>>>+<<<<-]>>>>>++++++++++<<<<[<<
 +>>-]<<[>>>>>>[<<<<+<+>>>>>-]<<<<<[>>>>>+<<<<<-]<-]>>>>>>[-]<<<,>,>,<<[<-<+>>-]<<
@@ -43,6 +44,7 @@
 +>>>>-]<<<<[>>>>+<<<<-]<[>+<<-[>>[-]>>>>>>+<<<<<<<<-]>>>>>>>>[<<<<<<<<+>>>>>>>>-]
 <<<<<<[<-[>>-<<[-]]+>-]<-]>>+<<<]>>>.<<]<<<[>>+>+<<<-]>>[<<+>>-]>[[-]<<<[-]>[-]>>
 ]<<]
+
 \end{verbatim}
 
 \par It isn't as straightforward as many programmers would see it. Solving it is left as an exercise for reader, and one of possible solutions is left in footnote. The code is in fact simple and every programmer would solve it in at most two hours. The flaw is brute-force nonresistance - I've left brute-forcing C program for around half a minute and was presented with long list of possible solutions. But the deal is - code isn't going to be fast, so brute-forcing is going to be inefficient; code is going to be way longer (up to two megabytes when using Izmit 3-4), and probably won't be as simple as a division, addition, two multiplications, and subtractions. Using debugger wouldn't help much too, because in reality the program would use thousands of memory cells and analyzing the code would take ages, efficiently freaking out potential crackers and having them to ask themselves question, is cracking this worth the effort to first {\bf understand} what the code is doing, {\bf and extend it}.
@@ -56,8 +58,16 @@
 \section{Brainfuck}
 \par Brainfuck is known among programmers since XX decade. I'm going to start off with this language because it's paradoxically simplest of all of these. Brainfuck has the highest amount of tools available to simplify programming process - many assemblers, compilers - but many debuggers too. Brainfuck overall is the least hellishly-complicated languages I'll take on my bench in this paper. It's dead simple implementation of abstract Turing automata (more specifically, it's better to call it Turing tarpit\footnote{"Epigrams of Programming" by A. Perlis have given such definition - {Beware of the Turing tar-pit in which everything is possible but nothing of interest is easy.}}), allowing basic input and output, single loop type (in higher-level programming we would map them directly to \verb|while(...)| loops), incrementation and decrementation (not even complete addition and subtraction; only addition OR subtraction would be sufficient\footnote{Such machine will be mentioned in SUBLEQ/ADDLEQ part}) and tape pointer manipulation.
 
+\subsection{Introduction}
+
+\par Brainfuck is without doubt the most famous esoteric programming languages in existence. Let's dive into it!
+
+\subsubsection{Overview}
+
+\par Every brainfuck program on it's lowest level operates on an array of memory cells, also referred to as the tape, each initially set to zero. There is also pointer, initially pointing to the first memory cell.
+
 \subsection{asm2bf / bfasm}
-\par asm2bf\footnote{https://github.com/kspalaiologos/asmbf} and bfasm was my first attempt at real to-brainfuck compiler giving access to the most important features and some additional time-saving features. Consisting of a reduced instruction set featuring four\footnote{Experimental version features five} registers it's capable of creating even advanced applications.
+\par asm2bf\footnote{https://github.com/kspalaiologos/asmbf - accessed 13.06.2019 at 13:07} and bfasm was my first attempt at real to-brainfuck compiler giving access to the most important features and some additional time-saving features. Consisting of a reduced instruction set featuring four\footnote{Experimental version features five} registers it's capable of creating even advanced applications.
 
 \subsubsection{Register model}
 \par There are four general purpose registers: r1, r2, r3, and r4. Size of these registers depends on
@@ -106,6 +116,27 @@ register + character & r2, .X \\ \hline
 \end{table}
 
 \par Strings are only used with the \verb|txt| instruction. There are no escape sequences, use \verb|db_| when needed. Characters are converted to the appropriate ASCII immediate value. Immediate values can be any size (it depends) and are automatically substituted as if a register value. Therefore, immediate values can be used in place of a register. There can only be one immediate value per instruction. Operands are evaluated separately from instructions, so it is possible to use the wrong number of operands for an instruction with no error reported. However, doing this will most likely lead to a crash when the assembled program is ran.
+
+\subsubsection{Hints}
+\par Labels are numbered from 1. Remember that \textbf{all} instructions have length of 3 and whenever it's needed, floor (\verb|_|) is added at the end. Jump to label 0 will result in quitting application (same as \verb|end|), and redefining label 0 will result in undefined behavior.\footnote{Beware division by zero!} There is no call instruction.  A call can be generated as follows:
+
+\begin{verbatim}
+psh 23          ; value of return label
+jmp 1000        ; label of subroutine
+lbl 23          ; return position
+                ; some code
+
+; [...]
+end             ; end the program to prevent accidental
+                ; fallthru
+
+lbl 1000        ; subroutine
+                ; some code
+
+; [...]
+
+ret             ; return
+\end{verbatim}
 
 \subsubsection{asm2bf ISA}
 \par Instructions are case sensitive and must be given in lowercase letters. The returned values of a boolean operation are \verb|0| (\verb|false|) or \verb|1| (\verb|true|). This applies to \verb|and|, \verb|eq_|, \verb|ge_|, \verb|gt_|, \verb|le_|, \verb|lt_|, \verb|ne_|, \verb|or_|. Only one instruction is allowed per line. Note that \verb|lbl| (label) is treated an instruction
@@ -185,27 +216,6 @@ register + character & r2, .X \\ \hline
 
 \newpage
 
-\subsubsection{Hints}
-\par Labels are numbered from 1. Remember that \textbf{all} instructions have length of 3 and whenever it's needed, floor (\verb|_|) is added at the end. Jump to label 0 will result in quitting application (same as \verb|end|), and redefining label 0 will result in undefined behavior.\footnote{Beware division by zero!} There is no call instruction.  A call can be generated as follows:
-
-\begin{verbatim}
-psh 23          ; value of return label
-jmp 1000        ; label of subroutine
-lbl 23          ; return position
-                ; some code
-
-; [...]
-end             ; end the program to prevent accidental
-                ; fallthru
-
-lbl 1000        ; subroutine
-                ; some code
-
-; [...]
-
-ret             ; return
-\end{verbatim}
-
 \subsubsection{Debugging}
 \par Use bfintd\footnote{No support for experimental version now.}. To place a breakpoint, use:
 
@@ -255,6 +265,239 @@ out r1
 \end{tabular}
 \end{table}
 
-\subsection{Generic C compiler}
+\section{Izmit\footnote{http://izmit3.herokuapp.com/ accessed 13.06.2019 at 13:07; note unlambda output seems broken now} series}
+\par Izmit is ANSI C89 compiler targeting bfasmv5b. It's a gcc back-end for generating very simple assembly capable of multiplying, adding, dividing and subtracting, comparing, conditional branching and terminal input/output, and 6 registers. They only drawback is size of generated code, reaching in some cases more than two megabytes. Izmit was capable of self-compilation (resulting 80 megabytes of brainfuck) and compiling Linux kernel with larger patches, yet the brainfuck was never generated, only assembly listing was made. The output code interpreter would have to be plugged to perform low-level stuff needed by the kernel. Izmit is fairly retargetable allowing compilation to Brainfuck and Unlambda, Brainfuck (3), asm.js (4), and C (5, planned). It supports entirety of C89 standard, with exclusion to things that need to be user-pluggable to keep extensibility at the highest possible level. Let's look at this example Izmit4 code:
+
+\begin{verbatim}
+int fib(int n) {
+        if(n <= 1)
+                return 1;
+        else
+                return fib(n-1)+fib(n-2);
+}
+
+int main(void) {
+        putchar(fib(7));
+}
+\end{verbatim}
+
+The following output assembly is generated:
+
+\begin{multicols}{4}
+\begin{verbatim}
+fib:
+	mov r4, r5
+	add r4, -1
+	sto r6, r4
+	mov r5, r4
+	mov r6, r5
+	mov r2, r6
+	add r2, 2
+	rcl r1, r2
+	mov r4, r5
+	add r4, -1
+	sto r1, r4
+	mov r5, r4
+	mov r1, 1
+	mov r2, r1
+	rcl r1, r5
+	add r5, 1
+	le r1, r2
+	jeq @L0, r1, 0
+	mov r1, 1
+	mov r2, r1
+	mov r5, r6
+	rcl r1, r5
+	add r5, 1
+	mov r6, r1
+	rcl r1, r5
+	add r5, 1
+	jmp r1
+	jmp @L1
+	@L0:
+	mov r2, r6
+	add r2, 2
+	rcl r1, r2
+	mov r4, r5
+	add r4, -1
+	sto r1, r4
+	mov r5, r4
+	mov r1, 1
+	mov r2, r1
+	rcl r1, r5
+	add r5, 1
+	sub r1, r2
+	mov r4, r5
+	add r4, -1
+	sto r1, r4
+	mov r5, r4
+	mov r1, @L2
+	mov r4, r5
+	add r4, -1
+	sto r1, r4
+	mov r5, r4
+	jmp fib
+	@L2:
+	mov r1, r2
+	add r5, 1
+	mov r4, r5
+	add r4, -1
+	sto r1, r4
+	mov r5, r4
+	mov r2, r6
+	add r2, 2
+	rcl r1, r2
+	mov r4, r5
+	add r4, -1
+	sto r1, r4
+	mov r5, r4
+	mov r1, 2
+	mov r2, r1
+	rcl r1, r5
+	add r5, 1
+	sub r1, r2
+	mov r4, r5
+	add r4, -1
+	sto r1, r4
+	mov r5, r4
+	mov r1, @L3
+	mov r4, r5
+	add r4, -1
+	sto r1, r4
+	mov r5, r4
+	jmp fib
+	@L3:
+	mov r1, r2
+	add r5, 1
+	mov r2, r1
+	rcl r1, r5
+	add r5, 1
+	add r1, r2
+	mov r2, r1
+	mov r5, r6
+	rcl r1, r5
+	add r5, 1
+	mov r6, r1
+	rcl r1, r5
+	add r5, 1
+	jmp r1
+	@L1:
+	mov r5, r6
+	rcl r1, r5
+	add r5, 1
+	mov r6, r1
+	rcl r1, r5
+	add r5, 1
+	jmp r1
+main:
+	mov r4, r5
+	add r4, -1
+	sto r6, r4
+	mov r5, r4
+	mov r6, r5
+	mov r1, 7
+	mov r4, r5
+	add r4, -1
+	sto r1, r4
+	mov r5, r4
+	mov r1, @L4
+	mov r4, r5
+	add r4, -1
+	sto r1, r4
+	mov r5, r4
+	jmp fib
+	@L4:
+	mov r1, r2
+	add r5, 1
+	mov r4, r5
+	add r4, -1
+	sto r1, r4
+	mov r5, r4
+	out r1
+	add r5, 1
+	end
+\end{verbatim}
+\end{multicols}
+
+And from the assembly, following asm.js code was generated\footnote{The code was further minified after compilation}:
+
+\begin{multicols}{2}
+\begin{verbatim}
+var main=function(e,a){return
+function(e,a,r){"use asm";var
+c=new e.Int32Array(r),s=a.f,n
+=a.g,b=1,i=0;const k=16777215
+;var t=0,f=0,u=0,o=0,w=0,h=0,
+v=0;function l(){c[0]=1}function
+g(){while(0<=(i|0)&(i|0)<512&
+b){switch(i|0){case-1:break;
+case 0:i=8-1|0;break;case 1:
+o=h;o=o+k&k;c[o<<2>>2]=w;h=o;
+w=h;f=w;f=f+2&k;t=c[f<<2>>2]
+|0;o=h;o=o+k&k;c[o<<2>>2]=t;
+h=o;t=1;f=t;t=c[h<<2>>2]|0;h
+=h+1&k;t=t>>>0<=f>>>0;if(t>>>
+0==0>>>0)i=4-1|0;break;case
+2:t=1;f=t;h=w;t=c[h<<2>>2]|0;
+h=h+1&k;w=t;t=c[h<<2>>2]|0;h
+=h+1&k;i=t-1|0;break;case 3:
+i=7-1|0;break;case 4:f=w;f=
+f+2&k;t=c[f<<2>>2]|0;o=h;o=
+o+k&k;c[o<<2>>2]=t;h=o;t=1;
+f=t;t=c[h<<2>>2]|0;h=h+1&k;
+t=t-f&k;o=h;o=o+k&k;c[o<<2
+>>2]=t;h=o;t=5;o=h;o=o+k&k;
+c[o<<2>>2]=t;h=o;i=1-1|0;break;
+case 5:t=f;h=h+1&k;o=h;o=o+k&k
+;c[o<<2>>2]=t;h=o;f=w;f=f+2&k
+;t=c[f<<2>>2]|0;o=h;o=o+k&k;
+c[o<<2>>2]=t;h=o;t=2;f=t;t=c
+[h<<2>>2]|0;h=h+1&k;t=t-f&k;
+o=h;o=o+k&k;c[o<<2>>2]=t;h=o;
+t=6;o=h;o=o+k&k;c[o<<2>>2]=t;
+h=o;i=1-1|0;break;case 6:t=f;
+h=h+1&k;f=t;t=c[h<<2>>2]|0;h=
+h+1&k;t=t+f&k;f=t;h=w;t=c[h<<
+2>>2]|0;h=h+1&k;w=t;t=c[h<<2>>
+2]|0;h=h+1&k;i=t-1|0;break;case
+7:h=w;t=c[h<<2>>2]|0;h=h+1&k;w
+=t;t=c[h<<2>>2]|0;h=h+1&k;i=t-
+1|0;break;case 8:o=h;o=o+k&k;c
+[o<<2>>2]=w;h=o;w=h;t=7;o=h;o=
+o+k&k;c[o<<2>>2]=t;h=o;t=9;o=h
+;o=o+k&k;c[o<<2>>2]=t;h=o;i=1-
+1|0;break;case 9:t=f;h=h+1&k;o
+=h;o=o+k&k;c[o<<2>>2]=t;h=o;s(
+t|0);h=h+1&k;b=0;break}i=i+1|0
+}}function m(){l();while(b){
+switch((i|0)/512|0){case 0:g()
+;break}}}return m}((0,eval)(
+"this"),{g:e,f:a},new
+ArrayBuffer(1<<26))()};
+\end{verbatim}
+\end{multicols}
+
+\par It's not \textit{that} hard to understand, emscripten generates way worse code. The deal here is, the code is just plain unreadable and ununderstandable, and it would take ages to understand what is going on in \textit{this} asm.js code weighting 1,4 kilobyte. Izmit series is able to generate brainfuck (weighting \textbf{1.11 MB}) and unlambda \footnote{weighting \textbf{92 KB}} too. It would be plain old impossible to figure out what the program is doing without running it before. To analyze the code, researcher should know how the Izmit series compiler works, then write a disassembler, and then, finally, start seeking through hundreds of kilobytes of generated assembly code stripping dead code without any labels available and symbols exported. Currently Izmit3 is generating better brainfuck code than Izmit4 and I'm had working on optimizations.
+
+\subsection{Strength of obfuscation}
+\par With the paper comes eight kilobytes big 7zip LZMA-compressed archive named task.7z containing challenge binary. It was compiled on Windows Subsystem for Linux using Windows 10 x64 build 1809. It went through one compilation pass. This program is just a standard CTF - you guess the password - you win. Whenever you, dear reader, find a correct password \footnote{I've forgot the correct password, so I'll be unable to help.}, please e-mail me \footnote{kspalaiologos@gmail.com}.
+
+\section{GolfScript}
+\par Golfscript is rather interesting one. Entire purpose of this language is creating very dense applications performing one simple task in just a few bytes. The GolfScript by itself isn't very intresting language because of it's simplicity and distinctiveness, but the model used can be implemented to create CPU programmable by small bits of code opening way to build larger systems out of small blocks, increasing modularity, possibly performance and scalability, currently Forth is sometimes used for this purpose, but a freestanding dialect of language that is simillar ideologically could theoretically take place of other modern-day solutions.
+
+\section{Unlambda}
+\par Unlambda is pretty interesting language. It's minimalistic, often called "nearly pure" functional language, where all builtins represented by a single letter are only correct and a full-fledged objects, based on combinatory logic, is a variation of the lambda calculus that omits the lambda operator. It relies on built-in functions \verb|s| and \verb|k| and an apply operator \verb|`|. Variables are unsupported, and there are a few other builtins for I/O. More extended information about language can be found on it's homepage \footnote{http://www.madore.org/~david/programs/unlambda/ - accessed 16.06.2019}
+
+\par Unlambda's author has written an example program being 76 bytes big calculating Fibonacci sequence as series of stars:
+
+\begin{verbatim}
+```s``s``sii`ki`k.*``s``s`ks``s`k`s`ks``s``s`ks``s`k`s`kr``s`k`sikk`k``s`ksk
+\end{verbatim}
+
+\par Unlambda, like Seed, is very hard to modify. Izmit4 is able to produce unlambda code, but the online version of Izmit3 has broken code generator (that was borrowed from izmit4).
+
+\section{SUBLEQ}
+\section{Seed}
+\section{Malbolge}
 
 \end{document}
